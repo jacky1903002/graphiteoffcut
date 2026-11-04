@@ -1,947 +1,880 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>石墨餘料管理系統 - 企業商業版</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>石墨餘料管理系統</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- SheetJS (Excel Import/Export) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- html2canvas & jspdf for High Resolution PNG & PDF Export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        cream: '#FDFBF7',
-                        creamborder: '#EFECE6',
-                        navy: '#1E293B',
-                        navyaccent: '#0F172A',
-                        brand: '#2563EB',
-                        branddark: '#1D4ED8'
-                    }
-                }
-            }
-        }
-    </script>
-
-    <!-- FontAwesome & Google Fonts -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-    <!-- External Libraries (SheetJS, Chart.js, html2canvas, jsPDF) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
-    <style>
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: #FDFBF7;
-            color: #1E293B;
-        }
-        /* Excel Like Table Styling */
-        .table-input {
-            width: 100%;
-            background: transparent;
-            padding: 4px 6px;
-            border-radius: 4px;
-            border: 1px solid transparent;
-            transition: all 0.2s;
-        }
-        .table-input:focus {
-            background-color: #FFFFFF;
-            border-color: #2563EB;
-            outline: none;
-            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
-        }
-        .table-container {
-            max-height: calc(100vh - 280px);
-            overflow-y: auto;
-            overflow-x: auto;
-        }
-        th {
-            position: sticky;
-            top: 0;
-            z-index: 10;
-            background-color: #1E293B;
-            color: #FFFFFF;
-        }
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #F1F0EC;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #CBD5E1;
-            border-radius: 3px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #94A3B8;
-        }
-    </style>
+  <style>
+    body {
+      background-color: #FDFBF7; /* 米白色底色 */
+      color: #2D3748;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    .custom-table th {
+      background-color: #EFEBE4;
+      color: #334155;
+      font-weight: 700;
+      white-space: nowrap;
+      user-select: none;
+    }
+    .custom-table td {
+      background-color: #FFFFFF;
+      padding: 6px 8px;
+    }
+    .custom-table tr:nth-child(even) td {
+      background-color: #F9F8F3;
+    }
+    /* 表格輸入框樣式 */
+    .table-input {
+      width: 100%;
+      background: transparent;
+      border: 1px solid transparent;
+      padding: 4px 6px;
+      border-radius: 4px;
+      transition: border-color 0.15s ease-in-out;
+    }
+    .table-input:focus {
+      background: #FFFFFF;
+      border-color: #94A3B8;
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.2);
+    }
+  </style>
 </head>
 <body class="min-h-screen flex flex-col">
 
-    <!-- 1. Firebase Auth Modal (登入視窗) -->
-    <div id="loginModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-md p-8">
-            <div class="text-center mb-6">
-                <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-50 text-blue-600 rounded-full mb-3">
-                    <i class="fa-solid fa-cubes-stacked text-3xl"></i>
-                </div>
-                <h2 class="text-2xl font-bold text-slate-800">石墨餘料管理系統</h2>
-                <p class="text-xs text-slate-500 mt-1">請輸入 Firebase 註冊之帳號密碼進行驗證</p>
-            </div>
-
-            <form id="loginForm" class="space-y-4">
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">電子郵件 (Email)</label>
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-                            <i class="fa-solid fa-envelope"></i>
-                        </span>
-                        <input type="email" id="loginEmail" required placeholder="name@company.com" 
-                            class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">密碼 (Password)</label>
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-                            <i class="fa-solid fa-lock"></i>
-                        </span>
-                        <input type="password" id="loginPassword" required placeholder="••••••••" 
-                            class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    </div>
-                </div>
-
-                <div id="loginError" class="hidden text-xs text-red-600 bg-red-50 p-2.5 rounded-lg border border-red-200">
-                    <i class="fa-solid fa-circle-exclamation mr-1"></i> 帳號或密碼錯誤！
-                </div>
-
-                <button type="submit" id="btnLogin" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg text-sm transition shadow-md flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-right-to-bracket"></i> 系統安全登入
-                </button>
-            </form>
+  <!-- 登入視窗 Modal -->
+  <div id="authModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 bg-opacity-70">
+    <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md border border-amber-100">
+      <div class="text-center mb-6">
+        <div class="inline-block p-3 rounded-full bg-amber-50 text-amber-800 mb-2">
+          <i class="fa-solid fa-cubes-stacked text-3xl"></i>
         </div>
+        <h2 class="text-2xl font-bold text-slate-800">石墨餘料管理系統</h2>
+        <p class="text-sm text-slate-500 mt-1">請登入您的 Firebase 帳號</p>
+      </div>
+      
+      <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">電子郵件 Email</label>
+          <input type="email" id="loginEmail" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:outline-none" placeholder="name@company.com">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">密碼 Password</label>
+          <input type="password" id="loginPassword" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:outline-none" placeholder="••••••••">
+        </div>
+        <div id="authError" class="text-red-500 text-sm text-center hidden"></div>
+        <button type="submit" id="loginBtn" class="w-full bg-amber-800 hover:bg-amber-900 text-white font-semibold py-2.5 rounded-lg transition duration-200 shadow">
+          <i class="fa-solid fa-right-to-bracket mr-2"></i> 登入系統
+        </button>
+      </form>
     </div>
+  </div>
 
-    <!-- 2. 主系統視窗 -->
-    <div id="appContainer" class="hidden flex-col flex-grow">
+  <!-- 主系統畫面 -->
+  <div id="mainSystem" class="flex-1 flex flex-col hidden">
+    <!-- 上方導覽與狀態列 -->
+    <header class="bg-slate-800 text-slate-100 shadow-md border-b border-slate-700 px-6 py-3">
+      <div class="flex flex-wrap justify-between items-center gap-4">
+        <div class="flex items-center space-x-3">
+          <i class="fa-solid fa-layer-group text-amber-400 text-2xl"></i>
+          <div>
+            <h1 class="text-lg font-bold tracking-wide">石墨餘料管理系統</h1>
+            <span class="text-xs text-slate-400">Enterprise Graphite Offcut Management</span>
+          </div>
+        </div>
 
-        <!-- Top Status Bar & Header -->
-        <header class="bg-slate-900 text-white border-b border-slate-800 px-4 md:px-6 py-3 shadow-md">
-            <div class="w-full flex flex-col md:flex-row justify-between items-center gap-4">
-                
-                <!-- System Title -->
-                <div class="flex items-center gap-3">
-                    <div class="bg-blue-600 text-white p-2 rounded-lg">
-                        <i class="fa-solid fa-cubes text-xl"></i>
-                    </div>
-                    <div>
-                        <h1 class="font-bold text-lg leading-tight tracking-wide">石墨餘料管理系統</h1>
-                        <p class="text-xs text-slate-400">Enterprise Offcut Cost & Analytics Platform</p>
-                    </div>
-                </div>
-
-                <!-- Status Monitors & Controls -->
-                <div class="flex flex-wrap items-center gap-4 md:gap-6 text-xs">
-                    <!-- Realtime Connection Status -->
-                    <div class="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-full border border-slate-700">
-                        <span id="connectionDot" class="w-2.5 h-2.5 rounded-full bg-slate-500 animate-pulse"></span>
-                        <span id="connectionText" class="text-slate-300 font-medium">連線檢查中...</span>
-                    </div>
-
-                    <!-- Last Saved Timestamp -->
-                    <div class="flex items-center gap-2 text-slate-300">
-                        <i class="fa-regular fa-clock text-blue-400"></i>
-                        <span>上次儲存: <strong id="lastSavedTime" class="text-slate-100 font-mono">尚無儲存紀錄</strong></span>
-                    </div>
-
-                    <!-- User Profile & Logout -->
-                    <div class="flex items-center gap-3 pl-4 border-l border-slate-700">
-                        <span id="userDisplay" class="text-slate-300 font-medium">--</span>
-                        <button id="btnLogout" class="bg-slate-800 hover:bg-slate-700 text-red-400 hover:text-red-300 px-3 py-1.5 rounded-lg border border-slate-700 transition flex items-center gap-1.5">
-                            <i class="fa-solid fa-power-off"></i> 登出
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </header>
-
-        <!-- Navigation Tabs -->
-        <nav class="bg-white border-b border-slate-200 px-4 md:px-6 shadow-sm sticky top-0 z-40">
-            <div class="w-full flex overflow-x-auto space-x-1 py-2" id="navTabs">
-                <button onclick="switchTab('tab1')" id="btn-tab1" class="tab-btn px-4 py-2.5 text-xs font-semibold rounded-lg text-blue-600 bg-blue-50 border border-blue-200 transition flex items-center gap-2 whitespace-nowrap">
-                    <i class="fa-solid fa-table-list"></i> 頁面一：石墨下腳料分析表格
-                </button>
-                <button onclick="switchTab('tab2')" id="btn-tab2" class="tab-btn px-4 py-2.5 text-xs font-semibold rounded-lg text-slate-600 hover:bg-slate-100 transition flex items-center gap-2 whitespace-nowrap">
-                    <i class="fa-solid fa-chart-column"></i> 頁面二：圖表 1 (年度節省比較)
-                </button>
-                <button onclick="switchTab('tab3')" id="btn-tab3" class="tab-btn px-4 py-2.5 text-xs font-semibold rounded-lg text-slate-600 hover:bg-slate-100 transition flex items-center gap-2 whitespace-nowrap">
-                    <i class="fa-solid fa-chart-line"></i> 頁面三：圖表 2 (逐月節省金額)
-                </button>
-                <button onclick="switchTab('tab4')" id="btn-tab4" class="tab-btn px-4 py-2.5 text-xs font-semibold rounded-lg text-slate-600 hover:bg-slate-100 transition flex items-center gap-2 whitespace-nowrap">
-                    <i class="fa-solid fa-chart-radar"></i> 頁面四：圖表 3 (平均成本比較)
-                </button>
-                <button onclick="switchTab('tab5')" id="btn-tab5" class="tab-btn px-4 py-2.5 text-xs font-semibold rounded-lg text-slate-600 hover:bg-slate-100 transition flex items-center gap-2 whitespace-nowrap">
-                    <i class="fa-solid fa-chart-pie"></i> 頁面五：圖表 4 (數量統計)
-                </button>
-            </div>
-        </nav>
-
-        <!-- Main Content Area (Full Width Container) -->
-        <main class="flex-grow p-3 md:p-5 w-full">
-
-            <!-- PAGE 1: 石墨下腳料分析表格 (Full Width) -->
-            <section id="tab1" class="tab-content block space-y-3 w-full">
-                
-                <!-- Action Bar -->
-                <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex flex-wrap justify-between items-center gap-3 w-full">
-                    <div class="flex items-center gap-3">
-                        <button onclick="addNewRow()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition flex items-center gap-1.5 shadow-sm">
-                            <i class="fa-solid fa-plus"></i> 新增下腳料紀錄
-                        </button>
-                        <input type="text" id="searchInput" oninput="renderTable()" placeholder="搜尋製令, 品號, 材質..." class="bg-slate-50 border border-slate-300 rounded-lg text-xs px-3 py-2 w-64 md:w-80 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    </div>
-
-                    <!-- Import Export Controls -->
-                    <div class="flex flex-wrap items-center gap-2">
-                        <label class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium px-3 py-2 rounded-lg cursor-pointer border border-slate-300 transition flex items-center gap-1.5">
-                            <i class="fa-solid fa-file-import text-green-600"></i> 匯入 Excel
-                            <input type="file" id="excelImport" accept=".xlsx, .xls" class="hidden" onchange="importExcel(event)">
-                        </label>
-                        <button onclick="exportExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-3 py-2 rounded-lg transition flex items-center gap-1.5 shadow-sm">
-                            <i class="fa-solid fa-file-excel"></i> 匯出 Excel
-                        </button>
-                        <button onclick="exportPNG('tab1', '石墨下腳料分析表格')" class="bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium px-3 py-2 rounded-lg transition flex items-center gap-1.5 shadow-sm">
-                            <i class="fa-solid fa-file-image"></i> 匯出 PNG
-                        </button>
-                        <button onclick="exportPDF('tab1', '石墨下腳料分析表格')" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-medium px-3 py-2 rounded-lg transition flex items-center gap-1.5 shadow-sm">
-                            <i class="fa-solid fa-file-pdf"></i> 匯出 PDF
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Table Area (Full Width Horizontal Scroll Table) -->
-                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden w-full">
-                    <div class="table-container w-full" style="max-height: calc(100vh - 210px);">
-                        <table class="w-full text-left border-collapse text-xs whitespace-nowrap">
-                            <thead>
-                                <tr class="divide-x divide-slate-700 font-semibold text-slate-200">
-                                    <th class="p-2.5 text-center min-w-[48px]">操作</th>
-                                    <th class="p-2.5 min-w-[130px]">日期 (YYYYMMDD)</th>
-                                    <th class="p-2.5 min-w-[130px]">材質</th>
-                                    <th class="p-2.5 min-w-[110px]">製令編號</th>
-                                    <th class="p-2.5 min-w-[110px]">品號</th>
-                                    <th class="p-2.5 text-right min-w-[90px]">數量</th>
-                                    <th class="p-2.5 min-w-[110px]">材料品號</th>
-                                    <th class="p-2.5 text-right min-w-[120px]">材料用量</th>
-                                    <th class="p-2.5 min-w-[110px]">備註1</th>
-                                    <th class="p-2.5 text-right min-w-[120px]">下腳料加工數量</th>
-                                    <th class="p-2.5 text-center min-w-[80px]">通知物管</th>
-                                    <th class="p-2.5 min-w-[95px]">業務幣別</th>
-                                    <th class="p-2.5 text-right min-w-[100px]">業務即時匯率</th>
-                                    <th class="p-2.5 text-right min-w-[120px]">材料成本-業務</th>
-                                    <th class="p-2.5 text-right bg-slate-800 text-blue-300 min-w-[130px]">台幣材料成本-業務</th>
-                                    <th class="p-2.5 text-right bg-slate-800 text-emerald-300 min-w-[130px]">業務節省金額-台幣</th>
-                                    <th class="p-2.5 min-w-[95px]">物管幣別</th>
-                                    <th class="p-2.5 text-right min-w-[100px]">物管即時匯率</th>
-                                    <th class="p-2.5 text-right min-w-[120px]">材料成本-物管</th>
-                                    <th class="p-2.5 text-right bg-slate-800 text-blue-300 min-w-[130px]">台幣材料成本-物管</th>
-                                    <th class="p-2.5 text-right bg-slate-800 text-emerald-300 min-w-[130px]">物管節省金額-台幣</th>
-                                    <th class="p-2.5 min-w-[110px]">備註2</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tableBody" class="divide-y divide-slate-200 bg-white">
-                                <!-- Data rows rendered dynamically -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
-
-            <!-- COMMON FILTER BAR FOR CHARTS -->
-            <div id="chartFilterBar" class="hidden mb-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-wrap justify-between items-center gap-4 w-full">
-                <div class="flex items-center gap-4">
-                    <div class="flex items-center gap-2">
-                        <label class="text-xs font-bold text-slate-700">篩選材質：</label>
-                        <select id="filterMaterial" onchange="updateActiveChart()" class="bg-slate-50 border border-slate-300 rounded-lg text-xs px-3 py-1.5 focus:ring-2 focus:ring-blue-500">
-                            <!-- Populated dynamically -->
-                        </select>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <label class="text-xs font-bold text-slate-700">篩選月份：</label>
-                        <select id="filterMonth" onchange="updateActiveChart()" class="bg-slate-50 border border-slate-300 rounded-lg text-xs px-3 py-1.5 focus:ring-2 focus:ring-blue-500">
-                            <option value="ALL">全部月份</option>
-                            <option value="01">1月</option>
-                            <option value="02">2月</option>
-                            <option value="03">3月</option>
-                            <option value="04">4月</option>
-                            <option value="05">5月</option>
-                            <option value="06">6月</option>
-                            <option value="07">7月</option>
-                            <option value="08">8月</option>
-                            <option value="09">9月</option>
-                            <option value="10">10月</option>
-                            <option value="11">11月</option>
-                            <option value="12">12月</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="flex items-center gap-2">
-                    <button id="btnChartPNG" class="bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium px-3 py-2 rounded-lg transition flex items-center gap-1.5 shadow-sm">
-                        <i class="fa-solid fa-file-image"></i> 匯出圖表 PNG
-                    </button>
-                    <button id="btnChartPDF" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-medium px-3 py-2 rounded-lg transition flex items-center gap-1.5 shadow-sm">
-                        <i class="fa-solid fa-file-pdf"></i> 匯出圖表 PDF
-                    </button>
-                </div>
-            </div>
-
-            <!-- PAGE 2: 圖表 1 (每年不同材質節省金額) -->
-            <section id="tab2" class="tab-content hidden space-y-4">
-                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm" id="chartCard2">
-                    <h3 class="text-base font-bold text-slate-800 mb-2 flex items-center gap-2">
-                        <i class="fa-solid fa-chart-column text-blue-600"></i>
-                        每年不同材質節省金額比較 (業務 vs 物管)
-                    </h3>
-                    <p class="text-xs text-slate-500 mb-4">分析年度各材質在業務與物管單位累積節省之台幣總金額</p>
-                    <div class="w-full h-[450px]">
-                        <canvas id="chart1"></canvas>
-                    </div>
-                </div>
-            </section>
-
-            <!-- PAGE 3: 圖表 2 (逐月不同材質節省金額) -->
-            <section id="tab3" class="tab-content hidden space-y-4">
-                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm" id="chartCard3">
-                    <h3 class="text-base font-bold text-slate-800 mb-2 flex items-center gap-2">
-                        <i class="fa-solid fa-chart-line text-emerald-600"></i>
-                        逐月不同材質節省金額趨勢 (業務 vs 物管)
-                    </h3>
-                    <p class="text-xs text-slate-500 mb-4">月度趨勢比較，即時掌控成本優化成效</p>
-                    <div class="w-full h-[450px]">
-                        <canvas id="chart2"></canvas>
-                    </div>
-                </div>
-            </section>
-
-            <!-- PAGE 4: 圖表 3 (依材質平均節省成本比較) -->
-            <section id="tab4" class="tab-content hidden space-y-4">
-                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm" id="chartCard4">
-                    <h3 class="text-base font-bold text-slate-800 mb-2 flex items-center gap-2">
-                        <i class="fa-solid fa-chart-bar text-purple-600"></i>
-                        依材質統計物管與業務之平均節省成本 (NTD)
-                    </h3>
-                    <p class="text-xs text-slate-500 mb-4">比較單筆材料平均節約成本效益</p>
-                    <div class="w-full h-[450px]">
-                        <canvas id="chart3"></canvas>
-                    </div>
-                </div>
-            </section>
-
-            <!-- PAGE 5: 圖表 4 (數量與下腳料加工數量統計) -->
-            <section id="tab5" class="tab-content hidden space-y-4">
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6" id="chartCard5">
-                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                        <h3 class="text-sm font-bold text-slate-800 mb-2 flex items-center gap-2">
-                            <i class="fa-solid fa-cubes text-indigo-600"></i> 各材質逐月數量統計
-                        </h3>
-                        <div class="w-full h-[380px]">
-                            <canvas id="chart4A"></canvas>
-                        </div>
-                    </div>
-
-                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                        <h3 class="text-sm font-bold text-slate-800 mb-2 flex items-center gap-2">
-                            <i class="fa-solid fa-recycle text-teal-600"></i> 各材質逐月下腳料加工數量統計
-                        </h3>
-                        <div class="w-full h-[380px]">
-                            <canvas id="chart4B"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-        </main>
-    </div>
-
-    <!-- System Modal Alert (替代 Alert) -->
-    <div id="sysModal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 text-center">
-            <div id="sysModalIcon" class="text-4xl text-blue-600 mb-3">
-                <i class="fa-solid fa-circle-info"></i>
-            </div>
-            <h4 id="sysModalTitle" class="text-lg font-bold text-slate-800 mb-2">系統通知</h4>
-            <p id="sysModalMsg" class="text-sm text-slate-600 mb-6">動作已成功完成。</p>
-            <button onclick="closeSysModal()" class="w-full py-2 bg-slate-800 hover:bg-slate-900 text-white font-medium rounded-lg text-sm">
-                確定
+        <!-- 狀態資訊列 (連線狀況 & 上次儲存日期時間) -->
+        <div class="flex items-center space-x-6 text-sm">
+          <div class="flex items-center space-x-2">
+            <span class="text-xs text-slate-400">連線狀況:</span>
+            <span id="connectionStatus" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+              <span class="w-2 h-2 mr-1.5 rounded-full bg-emerald-500 animate-pulse"></span> 已連線
+            </span>
+          </div>
+          <div class="flex items-center space-x-2">
+            <span class="text-xs text-slate-400">上次儲存時間:</span>
+            <span id="lastSaveTime" class="text-slate-200 font-mono text-xs">尚未儲存</span>
+          </div>
+          <div class="flex items-center space-x-3 border-l border-slate-700 pl-4">
+            <span id="userDisplay" class="text-slate-300 font-medium text-xs"></span>
+            <button onclick="handleLogout()" class="text-slate-400 hover:text-white transition" title="登出">
+              <i class="fa-solid fa-right-from-bracket text-base"></i>
             </button>
+          </div>
         </div>
-    </div>
+      </div>
+    </header>
 
-    <!-- Application JavaScript Logic -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    <!-- 分頁導覽列 (支援雙擊修改頁面名稱) -->
+    <nav class="bg-amber-900/10 border-b border-amber-900/20 px-6 py-2">
+      <div class="flex space-x-2 overflow-x-auto" id="tabContainer">
+        <button onclick="switchTab(1)" ondblclick="renameTab(1)" id="tab-btn-1" class="tab-btn px-4 py-2 text-sm font-semibold rounded-lg bg-amber-800 text-white shadow transition flex items-center space-x-2 whitespace-nowrap">
+          <i class="fa-solid fa-table"></i> <span id="tab-title-1">1. 石墨下腳料分析表格</span>
+        </button>
+        <button onclick="switchTab(2)" ondblclick="renameTab(2)" id="tab-btn-2" class="tab-btn px-4 py-2 text-sm font-semibold rounded-lg text-slate-600 hover:bg-amber-100/50 transition flex items-center space-x-2 whitespace-nowrap">
+          <i class="fa-solid fa-chart-line"></i> <span id="tab-title-2">2. 年度節省金額分析</span>
+        </button>
+        <button onclick="switchTab(3)" ondblclick="renameTab(3)" id="tab-btn-3" class="tab-btn px-4 py-2 text-sm font-semibold rounded-lg text-slate-600 hover:bg-amber-100/50 transition flex items-center space-x-2 whitespace-nowrap">
+          <i class="fa-solid fa-chart-bar"></i> <span id="tab-title-3">3. 逐月節省金額分析</span>
+        </button>
+        <button onclick="switchTab(4)" ondblclick="renameTab(4)" id="tab-btn-4" class="tab-btn px-4 py-2 text-sm font-semibold rounded-lg text-slate-600 hover:bg-amber-100/50 transition flex items-center space-x-2 whitespace-nowrap">
+          <i class="fa-solid fa-chart-pie"></i> <span id="tab-title-4">4. 平均節省成本比較</span>
+        </button>
+        <button onclick="switchTab(5)" ondblclick="renameTab(5)" id="tab-btn-5" class="tab-btn px-4 py-2 text-sm font-semibold rounded-lg text-slate-600 hover:bg-amber-100/50 transition flex items-center space-x-2 whitespace-nowrap">
+          <i class="fa-solid fa-cubes"></i> <span id="tab-title-5">5. 材質與加工數量統計</span>
+        </button>
+      </div>
+      <p class="text-[10px] text-slate-400 mt-1 ml-1"><i class="fa-solid fa-circle-info"></i> 提示：雙擊頁籤名稱可自訂修改分頁名稱</p>
+    </nav>
 
-        // 1. Firebase Configuration (整合傳入金鑰)
-        const firebaseConfig = {
-            apiKey: "AIzaSyAfcabrkt4RZXQ1VuzW9LI1srI6vedds7Q",
-            authDomain: "graphiteoffcut.firebaseapp.com",
-            projectId: "graphiteoffcut",
-            storageBucket: "graphiteoffcut.firebasestorage.app",
-            messagingSenderId: "534152222490",
-            appId: "1:534152222490:web:2d201aa48e796c354bbea3",
-            measurementId: "G-K50B5K7F5F"
-        };
+    <!-- 主要內容區 (滿版畫面) -->
+    <main class="flex-1 p-4 w-full">
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getDatabase(app);
+      <!-- ================= 頁面一：分析表格 (滿版) ================= -->
+      <section id="page-1" class="tab-content space-y-4">
+        <!-- 工具列 -->
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
+          <div class="flex items-center space-x-3">
+            <button onclick="addNewRow()" class="bg-emerald-700 hover:bg-emerald-800 text-white px-3.5 py-1.5 rounded-lg text-sm font-medium transition flex items-center shadow-sm">
+              <i class="fa-solid fa-plus mr-1.5"></i> 新增資料
+            </button>
+            <span class="text-xs text-slate-400">|</span>
+            <label class="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center">
+              <i class="fa-solid fa-file-import mr-1.5 text-emerald-600"></i> 匯入 Excel
+              <input type="file" accept=".xlsx, .xls" class="hidden" onchange="importExcel(event)">
+            </label>
+            <button onclick="exportExcel()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center">
+              <i class="fa-solid fa-file-excel mr-1.5 text-emerald-600"></i> 匯出 Excel
+            </button>
+          </div>
 
-        // Standard Material Options
-        const MATERIALS = [
-            "G2120", "G2160", "G2340", "GG530HK2", "GHPG830", "GISO680", "GISO880", 
-            "GPX2400", "GR6510", "GR6710", "GSCF2", "GT5", "GT5P", "GT5PVGI", "GT6P", 
-            "GTVR2", "GTX76UVGI", "GVLG2", "GVLG4", "GXRD7W", "GZEE2"
-        ];
+          <div class="flex items-center space-x-2">
+            <button onclick="exportPageExport('page-1', 'png')" class="bg-amber-800/10 hover:bg-amber-800/20 text-amber-900 border border-amber-800/30 px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center">
+              <i class="fa-solid fa-image mr-1.5"></i> 匯出 高畫質 PNG
+            </button>
+            <button onclick="exportPageExport('page-1', 'pdf')" class="bg-rose-800/10 hover:bg-rose-800/20 text-rose-900 border border-rose-800/30 px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center">
+              <i class="fa-solid fa-file-pdf mr-1.5"></i> 匯出 高畫質 PDF
+            </button>
+          </div>
+        </div>
 
-        // Standard Currency Exchange Rates
-        const CURRENCY_RATES = {
-            "美金": 31.50,
-            "日圓": 0.21,
-            "歐元": 34.20,
-            "人民幣": 4.35,
-            "英鎊": 40.10
-        };
+        <!-- 滿版分析表格 container -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden" id="export-area-page-1">
+          <div class="overflow-x-auto max-h-[calc(100vh-230px)]">
+            <table class="w-full text-xs text-left custom-table border-collapse">
+              <thead class="sticky top-0 z-10 shadow-sm">
+                <!-- 欄位標題完全鎖定 (不可誤觸修改) -->
+                <tr>
+                  <th class="p-2 border border-slate-300 text-center w-10">操作</th>
+                  <th class="p-2 border border-slate-300 min-w-[110px]">日期</th>
+                  <th class="p-2 border border-slate-300 min-w-[130px]">材質</th>
+                  <th class="p-2 border border-slate-300 min-w-[100px]">製令編號</th>
+                  <th class="p-2 border border-slate-300 min-w-[100px]">品號</th>
+                  <th class="p-2 border border-slate-300 min-w-[90px]">數量</th>
+                  <th class="p-2 border border-slate-300 min-w-[100px]">材料品號</th>
+                  <th class="p-2 border border-slate-300 min-w-[110px]">材料用量</th>
+                  <th class="p-2 border border-slate-300 min-w-[120px]">備註</th>
+                  <th class="p-2 border border-slate-300 min-w-[110px]">下腳料加工數量</th>
+                  <th class="p-2 border border-slate-300 min-w-[90px]">通知物管</th>
+                  <th class="p-2 border border-slate-300 min-w-[90px]">幣別(業務)</th>
+                  <th class="p-2 border border-slate-300 min-w-[90px]">即時匯率</th>
+                  <th class="p-2 border border-slate-300 min-w-[120px]">材料成本-業務</th>
+                  <th class="p-2 border border-slate-300 min-w-[140px] bg-amber-50">轉換台幣材料成本-業務</th>
+                  <th class="p-2 border border-slate-300 min-w-[140px] bg-amber-50">業務節省金額-台幣</th>
+                  <th class="p-2 border border-slate-300 min-w-[90px]">幣別(物管)</th>
+                  <th class="p-2 border border-slate-300 min-w-[90px]">即時匯率</th>
+                  <th class="p-2 border border-slate-300 min-w-[120px]">材料成本-物管</th>
+                  <th class="p-2 border border-slate-300 min-w-[140px] bg-blue-50">轉換台幣材料成本-物管</th>
+                  <th class="p-2 border border-slate-300 min-w-[140px] bg-blue-50">物管節省金額-台幣</th>
+                  <th class="p-2 border border-slate-300 min-w-[120px]">備註</th>
+                </tr>
+              </thead>
+              <tbody id="tableBody">
+                <!-- 資料動態渲染 -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
 
-        // Global State Variable
-        let offcutData = [];
-        let activeTab = 'tab1';
-        let chartInstances = {};
+      <!-- ================= 頁面二：圖表分析 1 ================= -->
+      <section id="page-2" class="tab-content space-y-4 hidden">
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center flex-wrap gap-4">
+          <div class="flex items-center space-x-4">
+            <h2 class="text-base font-bold text-slate-800">圖表分析：每年不同材質節省金額 (業務 vs 物管)</h2>
+            <div class="flex items-center space-x-2">
+              <label class="text-xs text-slate-500 font-semibold">選擇材質:</label>
+              <select id="chart1MaterialFilter" onchange="updateChart1()" class="border border-slate-300 rounded px-3 py-1 text-xs bg-slate-50 focus:outline-none">
+                <!-- 動態注入材質選項 -->
+              </select>
+            </div>
+            <div class="flex items-center space-x-2">
+              <label class="text-xs text-slate-500 font-semibold">選擇月份:</label>
+              <select id="chart1MonthFilter" onchange="updateChart1()" class="border border-slate-300 rounded px-3 py-1 text-xs bg-slate-50 focus:outline-none">
+                <option value="ALL">全部月份</option>
+                <option value="01">1月</option><option value="02">2月</option><option value="03">3月</option>
+                <option value="04">4月</option><option value="05">5月</option><option value="06">6月</option>
+                <option value="07">7月</option><option value="08">8月</option><option value="09">9月</option>
+                <option value="10">10月</option><option value="11">11月</option><option value="12">12月</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex space-x-2">
+            <button onclick="exportChartExport('chart1Container', 'png')" class="bg-amber-800/10 hover:bg-amber-800/20 text-amber-900 px-3 py-1.5 rounded-lg text-xs font-medium">匯出高畫質 PNG</button>
+            <button onclick="exportChartExport('chart1Container', 'pdf')" class="bg-rose-800/10 hover:bg-rose-800/20 text-rose-900 px-3 py-1.5 rounded-lg text-xs font-medium">匯出高畫質 PDF</button>
+          </div>
+        </div>
 
-        // DOM Elements
-        const loginModal = document.getElementById('loginModal');
-        const appContainer = document.getElementById('appContainer');
-        const loginForm = document.getElementById('loginForm');
-        const loginError = document.getElementById('loginError');
-        const connectionDot = document.getElementById('connectionDot');
-        const connectionText = document.getElementById('connectionText');
-        const lastSavedTime = document.getElementById('lastSavedTime');
-        const userDisplay = document.getElementById('userDisplay');
+        <div id="chart1Container" class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 min-h-[450px] flex items-center justify-center">
+          <canvas id="chart1Canvas"></canvas>
+        </div>
+      </section>
 
-        // 2. Auth State Monitoring
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                loginModal.classList.add('hidden');
-                appContainer.classList.remove('hidden');
-                appContainer.classList.add('flex');
-                userDisplay.textContent = user.email;
-                initFirebaseDatabase();
-            } else {
-                loginModal.classList.remove('hidden');
-                appContainer.classList.add('hidden');
-                appContainer.classList.remove('flex');
-            }
-        });
+      <!-- ================= 頁面三：圖表分析 2 ================= -->
+      <section id="page-3" class="tab-content space-y-4 hidden">
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center flex-wrap gap-4">
+          <div class="flex items-center space-x-4">
+            <h2 class="text-base font-bold text-slate-800">圖表分析：逐月不同材質節省金額 (業務 vs 物管)</h2>
+            <div class="flex items-center space-x-2">
+              <label class="text-xs text-slate-500 font-semibold">選擇材質:</label>
+              <select id="chart2MaterialFilter" onchange="updateChart2()" class="border border-slate-300 rounded px-3 py-1 text-xs bg-slate-50">
+              </select>
+            </div>
+          </div>
+          <div class="flex space-x-2">
+            <button onclick="exportChartExport('chart2Container', 'png')" class="bg-amber-800/10 hover:bg-amber-800/20 text-amber-900 px-3 py-1.5 rounded-lg text-xs font-medium">匯出高畫質 PNG</button>
+            <button onclick="exportChartExport('chart2Container', 'pdf')" class="bg-rose-800/10 hover:bg-rose-800/20 text-rose-900 px-3 py-1.5 rounded-lg text-xs font-medium">匯出高畫質 PDF</button>
+          </div>
+        </div>
 
-        // Login Handler
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('loginEmail').value;
-            const password = document.getElementById('loginPassword').value;
-            loginError.classList.add('hidden');
-            
-            try {
-                await signInWithEmailAndPassword(auth, email, password);
-            } catch (err) {
-                loginError.classList.remove('hidden');
-                loginError.innerHTML = `<i class="fa-solid fa-circle-exclamation mr-1"></i> 驗證失敗: ${err.message}`;
-            }
-        });
+        <div id="chart2Container" class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 min-h-[450px] flex items-center justify-center">
+          <canvas id="chart2Canvas"></canvas>
+        </div>
+      </section>
 
-        // Logout Handler
-        document.getElementById('btnLogout').addEventListener('click', () => {
-            signOut(auth);
-        });
+      <!-- ================= 頁面四：圖表分析 3 ================= -->
+      <section id="page-4" class="tab-content space-y-4 hidden">
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center flex-wrap gap-4">
+          <div class="flex items-center space-x-4">
+            <h2 class="text-base font-bold text-slate-800">圖表分析：依材質之物管與業務平均節省成本比較</h2>
+            <div class="flex items-center space-x-2">
+              <label class="text-xs text-slate-500 font-semibold">選擇月份:</label>
+              <select id="chart3MonthFilter" onchange="updateChart3()" class="border border-slate-300 rounded px-3 py-1 text-xs bg-slate-50">
+                <option value="ALL">全部月份</option>
+                <option value="01">1月</option><option value="02">2月</option><option value="03">3月</option>
+                <option value="04">4月</option><option value="05">5月</option><option value="06">6月</option>
+                <option value="07">7月</option><option value="08">8月</option><option value="09">9月</option>
+                <option value="10">10月</option><option value="11">11月</option><option value="12">12月</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex space-x-2">
+            <button onclick="exportChartExport('chart3Container', 'png')" class="bg-amber-800/10 hover:bg-amber-800/20 text-amber-900 px-3 py-1.5 rounded-lg text-xs font-medium">匯出高畫質 PNG</button>
+            <button onclick="exportChartExport('chart3Container', 'pdf')" class="bg-rose-800/10 hover:bg-rose-800/20 text-rose-900 px-3 py-1.5 rounded-lg text-xs font-medium">匯出高畫質 PDF</button>
+          </div>
+        </div>
 
-        // 3. Database Connection & Realtime Sync
-        function initFirebaseDatabase() {
-            // Monitor Online Status
-            const connectedRef = ref(db, ".info/connected");
-            onValue(connectedRef, (snap) => {
-                if (snap.val() === true) {
-                    connectionDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm";
-                    connectionText.textContent = "即時連線中 (Online)";
-                } else {
-                    connectionDot.className = "w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping";
-                    connectionText.textContent = "連線中斷 (Offline)";
-                }
-            });
+        <div id="chart3Container" class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 min-h-[450px] flex items-center justify-center">
+          <canvas id="chart3Canvas"></canvas>
+        </div>
+      </section>
 
-            // Sync Database Records
-            const dataRef = ref(db, 'offcut_data');
-            onValue(dataRef, (snapshot) => {
-                const val = snapshot.val();
-                if (val) {
-                    offcutData = Array.isArray(val.records) ? val.records : [];
-                    if (val.lastSaved) {
-                        lastSavedTime.textContent = val.lastSaved;
-                    }
-                } else {
-                    offcutData = [];
-                }
-                renderTable();
-                updateActiveChart();
-            });
+      <!-- ================= 頁面五：圖表分析 4 ================= -->
+      <section id="page-5" class="tab-content space-y-4 hidden">
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center flex-wrap gap-4">
+          <div class="flex items-center space-x-4">
+            <h2 class="text-base font-bold text-slate-800">圖表分析：各材質逐月數量與下腳料加工數量統計</h2>
+            <div class="flex items-center space-x-2">
+              <label class="text-xs text-slate-500 font-semibold">選擇材質:</label>
+              <select id="chart4MaterialFilter" onchange="updateChart4()" class="border border-slate-300 rounded px-3 py-1 text-xs bg-slate-50">
+              </select>
+            </div>
+          </div>
+          <div class="flex space-x-2">
+            <button onclick="exportChartExport('chart4Container', 'png')" class="bg-amber-800/10 hover:bg-amber-800/20 text-amber-900 px-3 py-1.5 rounded-lg text-xs font-medium">匯出高畫質 PNG</button>
+            <button onclick="exportChartExport('chart4Container', 'pdf')" class="bg-rose-800/10 hover:bg-rose-800/20 text-rose-900 px-3 py-1.5 rounded-lg text-xs font-medium">匯出高畫質 PDF</button>
+          </div>
+        </div>
+
+        <div id="chart4Container" class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 min-h-[450px] flex items-center justify-center">
+          <canvas id="chart4Canvas"></canvas>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Firebase JavaScript SDK Modular Build via Firebase App CDN -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getDatabase, ref, onValue, set, push, remove, onDisconnect } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+    // Firebase 配置金鑰 (使用者提供)
+    const firebaseConfig = {
+      apiKey: "AIzaSyAfcabrkt4RZXQ1VuzW9LI1srI6vedds7Q",
+      authDomain: "graphiteoffcut.firebaseapp.com",
+      projectId: "graphiteoffcut",
+      storageBucket: "graphiteoffcut.firebasestorage.app",
+      messagingSenderId: "534152222490",
+      appId: "1:534152222490:web:2d201aa48e796c354bbea3",
+      measurementId: "G-K50B5K7F5F"
+    };
+
+    // 初始化 Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+
+    // 常數定義
+    const MATERIALS = ["G2120","G2160","G2340","GG530HK2","GHPG830","GISO680","GISO880","GPX2400","GR6510","GR6710","GSCF2","GT5","GT5P","GT5PVGI","GT6P","GTVR2","GTX76UVGI","GVLG2","GVLG4","GXRD7W","GZEE2"];
+    const CURRENCIES = ["美金", "日圓", "歐元", "人民幣", "英鎊"];
+    const EXCHANGE_RATES = {
+      "美金": 31.5,
+      "日圓": 0.21,
+      "歐元": 34.2,
+      "人民幣": 4.38,
+      "英鎊": 40.1
+    };
+
+    let localData = [];
+    let chart1Instance = null, chart2Instance = null, chart3Instance = null, chart4Instance = null;
+
+    // 將 Firebase 函式掛載至 window 供全域調用
+    window.handleLogin = async (e) => {
+      e.preventDefault();
+      const email = document.getElementById("loginEmail").value;
+      const pass = document.getElementById("loginPassword").value;
+      const errEl = document.getElementById("authError");
+      errEl.classList.add("hidden");
+      
+      try {
+        await signInWithEmailAndPassword(auth, email, pass);
+      } catch (err) {
+        errEl.innerText = "登入失敗: " + err.message;
+        errEl.classList.remove("hidden");
+      }
+    };
+
+    window.handleLogout = () => {
+      signOut(auth);
+    };
+
+    // 監聽 Auth 狀態
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        document.getElementById("authModal").classList.add("hidden");
+        document.getElementById("mainSystem").classList.remove("hidden");
+        document.getElementById("userDisplay").innerText = user.email;
+        initDatabaseListener();
+        initTabTitles();
+      } else {
+        document.getElementById("authModal").classList.remove("hidden");
+        document.getElementById("mainSystem").classList.add("hidden");
+      }
+    });
+
+    // 監聽網路連線狀況
+    const connectedRef = ref(db, ".info/connected");
+    onValue(connectedRef, (snap) => {
+      const statusEl = document.getElementById("connectionStatus");
+      if (snap.val() === true) {
+        statusEl.className = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800";
+        statusEl.innerHTML = `<span class="w-2 h-2 mr-1.5 rounded-full bg-emerald-500 animate-pulse"></span> 已連線`;
+      } else {
+        statusEl.className = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-100 text-rose-800";
+        statusEl.innerHTML = `<span class="w-2 h-2 mr-1.5 rounded-full bg-rose-500"></span> 離線/連線中`;
+      }
+    });
+
+    // 初始化 Realtime Database 監聽
+    function initDatabaseListener() {
+      const dataRef = ref(db, "offcut_data");
+      onValue(dataRef, (snapshot) => {
+        const val = snapshot.val();
+        localData = [];
+        if (val) {
+          Object.keys(val).forEach(key => {
+            localData.push({ id: key, ...val[key] });
+          });
         }
+        renderTable();
+        populateFilterDropdowns();
+        updateAllCharts();
+        updateSaveTimeDisplay();
+      });
+    }
 
-        // Auto Save function to Database
-        window.saveToFirebase = function() {
-            const nowStr = new Date().toLocaleString('zh-TW', { hour12: false });
-            set(ref(db, 'offcut_data'), {
-                records: offcutData,
-                lastSaved: nowStr
-            }).then(() => {
-                lastSavedTime.textContent = nowStr;
-            }).catch(err => {
-                console.error("Save Error:", err);
-            });
-        };
+    function updateSaveTimeDisplay() {
+      const now = new Date();
+      document.getElementById("lastSaveTime").innerText = now.toLocaleString('zh-TW', { hour12: false });
+    }
 
-        // Populate Material Dropdowns
-        function populateMaterialOptions() {
-            const filterMat = document.getElementById('filterMaterial');
-            filterMat.innerHTML = '<option value="ALL">全部材質</option>';
-            MATERIALS.forEach(m => {
-                filterMat.innerHTML += `<option value="${m}">${m}</option>`;
-            });
+    // 儲存全量或單筆資料
+    window.saveToFirebase = function(dataArray) {
+      const dataRef = ref(db, "offcut_data");
+      const obj = {};
+      dataArray.forEach(item => {
+        const key = item.id || push(dataRef).key;
+        delete item.id;
+        obj[key] = item;
+      });
+      set(dataRef, obj).then(() => {
+        updateSaveTimeDisplay();
+      });
+    };
+
+    // 渲染滿版表格
+    function renderTable() {
+      const tbody = document.getElementById("tableBody");
+      tbody.innerHTML = "";
+
+      if (localData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="22" class="text-center py-8 text-slate-400">目前尚無資料，請點擊「新增資料」或「匯入 Excel」</td></tr>`;
+        return;
+      }
+
+      localData.forEach((row, index) => {
+        const tr = document.createElement("tr");
+
+        // 自動算公式
+        const exSales = parseFloat(row.exRateSales || EXCHANGE_RATES[row.currencySales] || 1);
+        const exLogistics = parseFloat(row.exRateLogistics || EXCHANGE_RATES[row.currencyLogistics] || 1);
+        const qty = parseFloat(row.qty || 0);
+
+        const convCostSales = (parseFloat(row.costSales || 0) * exSales).toFixed(5);
+        const saveSales = (convCostSales * qty).toFixed(2);
+
+        const convCostLogistics = (parseFloat(row.costLogistics || 0) * exLogistics).toFixed(5);
+        const saveLogistics = (convCostLogistics * qty).toFixed(2);
+
+        tr.innerHTML = `
+          <td class="text-center border border-slate-300">
+            <button onclick="deleteRow('${row.id}')" class="text-rose-500 hover:text-rose-700 font-bold px-1"><i class="fa-solid fa-trash"></i></button>
+          </td>
+          <td class="border border-slate-300"><input type="date" value="${formatDateForInput(row.date)}" onchange="updateCell('${row.id}', 'date', this.value.replace(/-/g,''))" class="table-input"></td>
+          <td class="border border-slate-300">
+            <select onchange="updateCell('${row.id}', 'material', this.value)" class="table-input">
+              ${MATERIALS.map(m => `<option value="${m}" ${row.material === m ? 'selected' : ''}>${m}</option>`).join('')}
+            </select>
+          </td>
+          <td class="border border-slate-300"><input type="text" value="${row.orderNo || ''}" onchange="updateCell('${row.id}', 'orderNo', this.value)" class="table-input"></td>
+          <td class="border border-slate-300"><input type="text" value="${row.itemNo || ''}" onchange="updateCell('${row.id}', 'itemNo', this.value)" class="table-input"></td>
+          <td class="border border-slate-300"><input type="number" step="any" value="${row.qty !== undefined ? row.qty : ''}" onchange="updateCell('${row.id}', 'qty', parseFloat(this.value)|0)" class="table-input font-mono"></td>
+          <td class="border border-slate-300"><input type="text" value="${row.matItemNo || ''}" onchange="updateCell('${row.id}', 'matItemNo', this.value)" class="table-input"></td>
+          <td class="border border-slate-300"><input type="number" step="0.00001" value="${row.matUsage !== undefined ? parseFloat(row.matUsage).toFixed(5) : ''}" onchange="updateCell('${row.id}', 'matUsage', parseFloat(this.value)||0)" class="table-input font-mono"></td>
+          <td class="border border-slate-300"><input type="text" value="${row.note1 || ''}" onchange="updateCell('${row.id}', 'note1', this.value)" class="table-input"></td>
+          <td class="border border-slate-300"><input type="number" step="any" value="${row.offcutQty !== undefined ? row.offcutQty : ''}" onchange="updateCell('${row.id}', 'offcutQty', parseFloat(this.value)|0)" class="table-input font-mono"></td>
+          <td class="border border-slate-300">
+            <select onchange="updateCell('${row.id}', 'notifyLogistics', this.value)" class="table-input">
+              <option value="O" ${row.notifyLogistics === 'O' ? 'selected' : ''}>O</option>
+              <option value="X" ${row.notifyLogistics === 'X' ? 'selected' : ''}>X</option>
+            </select>
+          </td>
+
+          <!-- 業務資訊 -->
+          <td class="border border-slate-300">
+            <select onchange="updateCurrency('${row.id}', 'currencySales', this.value)" class="table-input">
+              ${CURRENCIES.map(c => `<option value="${c}" ${(row.currencySales || '美金') === c ? 'selected' : ''}>${c}</option>`).join('')}
+            </select>
+          </td>
+          <td class="border border-slate-300"><input type="number" step="0.0001" value="${exSales}" readonly class="table-input font-mono bg-slate-50 text-slate-500"></td>
+          <td class="border border-slate-300"><input type="number" step="0.00001" value="${row.costSales !== undefined ? parseFloat(row.costSales).toFixed(5) : ''}" onchange="updateCell('${row.id}', 'costSales', parseFloat(this.value)||0)" class="table-input font-mono"></td>
+          <td class="border border-slate-300 bg-amber-50/50 font-mono text-slate-700 px-2 py-1.5">${convCostSales}</td>
+          <td class="border border-slate-300 bg-amber-50/50 font-mono font-bold text-amber-900 px-2 py-1.5">${saveSales}</td>
+
+          <!-- 物管資訊 -->
+          <td class="border border-slate-300">
+            <select onchange="updateCurrency('${row.id}', 'currencyLogistics', this.value)" class="table-input">
+              ${CURRENCIES.map(c => `<option value="${c}" ${(row.currencyLogistics || '美金') === c ? 'selected' : ''}>${c}</option>`).join('')}
+            </select>
+          </td>
+          <td class="border border-slate-300"><input type="number" step="0.0001" value="${exLogistics}" readonly class="table-input font-mono bg-slate-50 text-slate-500"></td>
+          <td class="border border-slate-300"><input type="number" step="0.00001" value="${row.costLogistics !== undefined ? parseFloat(row.costLogistics).toFixed(5) : ''}" onchange="updateCell('${row.id}', 'costLogistics', parseFloat(this.value)||0)" class="table-input font-mono"></td>
+          <td class="border border-slate-300 bg-blue-50/50 font-mono text-slate-700 px-2 py-1.5">${convCostLogistics}</td>
+          <td class="border border-slate-300 bg-blue-50/50 font-mono font-bold text-blue-900 px-2 py-1.5">${saveLogistics}</td>
+
+          <td class="border border-slate-300"><input type="text" value="${row.note2 || ''}" onchange="updateCell('${row.id}', 'note2', this.value)" class="table-input"></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function formatDateForInput(yyyymmdd) {
+      if (!yyyymmdd || yyyymmdd.length !== 8) return "";
+      return `${yyyymmdd.substring(0,4)}-${yyyymmdd.substring(4,6)}-${yyyymmdd.substring(6,8)}`;
+    }
+
+    // 表格操作
+    window.addNewRow = function() {
+      const today = new Date().toISOString().slice(0,10).replace(/-/g,"");
+      const newRow = {
+        date: today,
+        material: "G2120",
+        orderNo: "",
+        itemNo: "",
+        qty: 0,
+        matItemNo: "",
+        matUsage: 0,
+        note1: "",
+        offcutQty: 0,
+        notifyLogistics: "O",
+        currencySales: "美金",
+        exRateSales: 31.5,
+        costSales: 0,
+        currencyLogistics: "美金",
+        exRateLogistics: 31.5,
+        costLogistics: 0,
+        note2: ""
+      };
+      const dataRef = ref(db, "offcut_data");
+      push(dataRef, newRow);
+    };
+
+    window.deleteRow = function(id) {
+      if (confirm("確定要刪除這筆資料嗎？")) {
+        const itemRef = ref(db, `offcut_data/${id}`);
+        remove(itemRef);
+      }
+    };
+
+    window.updateCell = function(id, field, value) {
+      const itemRef = ref(db, `offcut_data/${id}/${field}`);
+      set(itemRef, value);
+    };
+
+    window.updateCurrency = function(id, field, currency) {
+      const rateField = field === 'currencySales' ? 'exRateSales' : 'exRateLogistics';
+      const rate = EXCHANGE_RATES[currency] || 1;
+      set(ref(db, `offcut_data/${id}/${field}`), currency);
+      set(ref(db, `offcut_data/${id}/${rateField}`), rate);
+    };
+
+    // Excel 匯入
+    window.importExcel = function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const bstr = evt.target.result;
+        const workbook = XLSX.read(bstr, { type: 'binary' });
+        const wsname = workbook.SheetNames[0];
+        const ws = workbook.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json(ws, { raw: true });
+
+        const importedRows = data.map(r => ({
+          date: String(r["日期"] || "").replace(/-/g,""),
+          material: r["材質"] || "G2120",
+          orderNo: String(r["製令編號"] || ""),
+          itemNo: String(r["品號"] || ""),
+          qty: parseFloat(r["數量"]) || 0,
+          matItemNo: String(r["材料品號"] || ""),
+          matUsage: parseFloat(r["材料用量"]) || 0,
+          note1: String(r["備註1"] || r["備註"] || ""),
+          offcutQty: parseFloat(r["下腳料加工數量"]) || 0,
+          notifyLogistics: r["通知物管"] || "O",
+          currencySales: r["幣別(業務)"] || "美金",
+          exRateSales: parseFloat(r["即時匯率(業務)"]) || EXCHANGE_RATES[r["幣別(業務)"]] || 31.5,
+          costSales: parseFloat(r["材料成本-業務"]) || 0,
+          currencyLogistics: r["幣別(物管)"] || "美金",
+          exRateLogistics: parseFloat(r["即時匯率(物管)"]) || EXCHANGE_RATES[r["幣別(物管)"]] || 31.5,
+          costLogistics: parseFloat(r["材料成本-物管"]) || 0,
+          note2: String(r["備註2"] || "")
+        }));
+
+        if (confirm(`已讀取 ${importedRows.length} 筆資料，要覆蓋並儲存至 Firebase 嗎？`)) {
+          saveToFirebase(importedRows);
         }
-        populateMaterialOptions();
+      };
+      reader.readAsBinaryString(file);
+    };
 
-        // 4. Page Table Rendering & Dynamic Calculations
-        window.renderTable = function() {
-            const tbody = document.getElementById('tableBody');
-            const query = document.getElementById('searchInput').value.toLowerCase();
-            tbody.innerHTML = '';
+    // Excel 匯出
+    window.exportExcel = function() {
+      const exportData = localData.map(r => {
+        const exS = parseFloat(r.exRateSales || 1);
+        const exL = parseFloat(r.exRateLogistics || 1);
+        const q = parseFloat(r.qty || 0);
+        const convS = parseFloat((r.costSales || 0) * exS);
+        const convL = parseFloat((r.costLogistics || 0) * exL);
 
-            offcutData.forEach((row, idx) => {
-                // Search Filter Logic
-                if (query && !row.material.toLowerCase().includes(query) && 
-                    !row.orderNo.toLowerCase().includes(query) && 
-                    !row.itemNo.toLowerCase().includes(query)) {
-                    return;
-                }
-
-                // Calculated Fields
-                const exchangeSales = CURRENCY_RATES[row.currSales] || 1;
-                const costTwdSales = (parseFloat(row.costSales) || 0) * exchangeSales;
-                const saveTwdSales = costTwdSales * (parseFloat(row.qty) || 0);
-
-                const exchangePm = CURRENCY_RATES[row.currPm] || 1;
-                const costTwdPm = (parseFloat(row.costPm) || 0) * exchangePm;
-                const saveTwdPm = costTwdPm * (parseFloat(row.qty) || 0);
-
-                // Update Row State with calculated values
-                row.rateSales = exchangeSales;
-                row.costTwdSales = costTwdSales;
-                row.saveTwdSales = saveTwdSales;
-                row.ratePm = exchangePm;
-                row.costTwdPm = costTwdPm;
-                row.saveTwdPm = saveTwdPm;
-
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-50 transition border-b border-slate-200";
-                tr.innerHTML = `
-                    <td class="p-2 text-center">
-                        <button onclick="deleteRow(${idx})" class="text-rose-500 hover:text-rose-700 p-1">
-                            <i class="fa-solid fa-trash-can"></i>
-                        </button>
-                    </td>
-                    <td class="p-1"><input type="date" value="${row.date || ''}" onchange="updateCell(${idx}, 'date', this.value)" class="table-input"></td>
-                    <td class="p-1">
-                        <select onchange="updateCell(${idx}, 'material', this.value)" class="table-input font-medium">
-                            ${MATERIALS.map(m => `<option value="${m}" ${row.material === m ? 'selected' : ''}>${m}</option>`).join('')}
-                        </select>
-                    </td>
-                    <td class="p-1"><input type="text" value="${row.orderNo || ''}" onchange="updateCell(${idx}, 'orderNo', this.value)" class="table-input"></td>
-                    <td class="p-1"><input type="text" value="${row.itemNo || ''}" onchange="updateCell(${idx}, 'itemNo', this.value)" class="table-input"></td>
-                    <td class="p-1"><input type="number" step="any" value="${row.qty || 0}" onchange="updateCell(${idx}, 'qty', parseFloat(this.value)||0)" class="table-input text-right font-semibold"></td>
-                    <td class="p-1"><input type="text" value="${row.matItemNo || ''}" onchange="updateCell(${idx}, 'matItemNo', this.value)" class="table-input"></td>
-                    <td class="p-1"><input type="number" step="0.00001" value="${(parseFloat(row.matUsage)||0).toFixed(5)}" onchange="updateCell(${idx}, 'matUsage', parseFloat(this.value)||0)" class="table-input text-right font-mono"></td>
-                    <td class="p-1"><input type="text" value="${row.note1 || ''}" onchange="updateCell(${idx}, 'note1', this.value)" class="table-input"></td>
-                    <td class="p-1"><input type="number" step="any" value="${row.offcutQty || 0}" onchange="updateCell(${idx}, 'offcutQty', parseFloat(this.value)||0)" class="table-input text-right font-semibold"></td>
-                    <td class="p-1 text-center">
-                        <select onchange="updateCell(${idx}, 'notifyPm', this.value)" class="table-input text-center">
-                            <option value="O" ${row.notifyPm === 'O' ? 'selected' : ''}>O</option>
-                            <option value="X" ${row.notifyPm === 'X' ? 'selected' : ''}>X</option>
-                        </select>
-                    </td>
-                    <td class="p-1">
-                        <select onchange="updateCell(${idx}, 'currSales', this.value)" class="table-input">
-                            ${Object.keys(CURRENCY_RATES).map(c => `<option value="${c}" ${row.currSales === c ? 'selected' : ''}>${c}</option>`).join('')}
-                        </select>
-                    </td>
-                    <td class="p-1 text-right px-2 font-mono text-slate-500">${exchangeSales.toFixed(2)}</td>
-                    <td class="p-1"><input type="number" step="0.00001" value="${(parseFloat(row.costSales)||0).toFixed(5)}" onchange="updateCell(${idx}, 'costSales', parseFloat(this.value)||0)" class="table-input text-right font-mono"></td>
-                    <td class="p-2 text-right font-mono text-blue-700 bg-blue-50/50">${costTwdSales.toFixed(5)}</td>
-                    <td class="p-2 text-right font-mono font-bold text-emerald-700 bg-emerald-50/50">${saveTwdSales.toFixed(2)}</td>
-                    <td class="p-1">
-                        <select onchange="updateCell(${idx}, 'currPm', this.value)" class="table-input">
-                            ${Object.keys(CURRENCY_RATES).map(c => `<option value="${c}" ${row.currPm === c ? 'selected' : ''}>${c}</option>`).join('')}
-                        </select>
-                    </td>
-                    <td class="p-1 text-right px-2 font-mono text-slate-500">${exchangePm.toFixed(2)}</td>
-                    <td class="p-1"><input type="number" step="0.00001" value="${(parseFloat(row.costPm)||0).toFixed(5)}" onchange="updateCell(${idx}, 'costPm', parseFloat(this.value)||0)" class="table-input text-right font-mono"></td>
-                    <td class="p-2 text-right font-mono text-blue-700 bg-blue-50/50">${costTwdPm.toFixed(5)}</td>
-                    <td class="p-2 text-right font-mono font-bold text-emerald-700 bg-emerald-50/50">${saveTwdPm.toFixed(2)}</td>
-                    <td class="p-1"><input type="text" value="${row.note2 || ''}" onchange="updateCell(${idx}, 'note2', this.value)" class="table-input"></td>
-                `;
-                tbody.appendChild(tr);
-            });
+        return {
+          "日期": r.date,
+          "材質": r.material,
+          "製令編號": r.orderNo,
+          "品號": r.itemNo,
+          "數量": q,
+          "材料品號": r.matItemNo,
+          "材料用量": parseFloat(parseFloat(r.matUsage || 0).toFixed(5)),
+          "備註1": r.note1,
+          "下腳料加工數量": parseFloat(r.offcutQty || 0),
+          "通知物管": r.notifyLogistics,
+          "幣別(業務)": r.currencySales,
+          "即時匯率(業務)": exS,
+          "材料成本-業務": parseFloat(parseFloat(r.costSales || 0).toFixed(5)),
+          "轉換台幣材料成本-業務": parseFloat(convS.toFixed(5)),
+          "業務節省金額-台幣": parseFloat((convS * q).toFixed(2)),
+          "幣別(物管)": r.currencyLogistics,
+          "即時匯率(物管)": exL,
+          "材料成本-物管": parseFloat(parseFloat(r.costLogistics || 0).toFixed(5)),
+          "轉換台幣材料成本-物管": parseFloat(convL.toFixed(5)),
+          "物管節省金額-台幣": parseFloat((convL * q).toFixed(2)),
+          "備註2": r.note2
         };
+      });
 
-        // Table Data Handlers
-        window.addNewRow = function() {
-            const today = new Date().toISOString().split('T')[0];
-            const newRow = {
-                date: today,
-                material: MATERIALS[0],
-                orderNo: "",
-                itemNo: "",
-                qty: 0,
-                matItemNo: "",
-                matUsage: 0,
-                note1: "",
-                offcutQty: 0,
-                notifyPm: "O",
-                currSales: "美金",
-                costSales: 0,
-                currPm: "美金",
-                costPm: 0,
-                note2: ""
-            };
-            offcutData.unshift(newRow);
-            renderTable();
-            saveToFirebase();
-        };
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "石墨下腳料分析");
+      XLSX.writeFile(workbook, `石墨下腳料分析表_${new Date().toISOString().slice(0,10)}.xlsx`);
+    };
 
-        window.deleteRow = function(idx) {
-            offcutData.splice(idx, 1);
-            renderTable();
-            saveToFirebase();
-        };
+    // 分頁切換與編輯標題
+    window.switchTab = function(tabIdx) {
+      document.querySelectorAll(".tab-content").forEach(el => el.classList.add("hidden"));
+      document.querySelectorAll(".tab-btn").forEach(el => {
+        el.classList.remove("bg-amber-800", "text-white", "shadow");
+        el.classList.add("text-slate-600");
+      });
 
-        window.updateCell = function(idx, key, val) {
-            offcutData[idx][key] = val;
-            renderTable();
-            saveToFirebase();
-        };
+      document.getElementById(`page-${tabIdx}`).classList.remove("hidden");
+      const activeBtn = document.getElementById(`tab-btn-${tabIdx}`);
+      activeBtn.classList.add("bg-amber-800", "text-white", "shadow");
+      activeBtn.classList.remove("text-slate-600");
+    };
 
-        // 5. Excel Import / Export Functionality
-        window.exportExcel = function() {
-            if (offcutData.length === 0) {
-                showSysModal("匯出通知", "目前尚無任何資料可供匯出。");
-                return;
-            }
+    window.renameTab = function(tabIdx) {
+      const currentTitle = document.getElementById(`tab-title-${tabIdx}`).innerText;
+      const newTitle = prompt("請輸入自訂頁面名稱：", currentTitle);
+      if (newTitle && newTitle.trim() !== "") {
+        document.getElementById(`tab-title-${tabIdx}`).innerText = newTitle.trim();
+        localStorage.setItem(`graphite_tab_title_${tabIdx}`, newTitle.trim());
+      }
+    };
 
-            const exportData = offcutData.map(r => ({
-                "日期": r.date,
-                "材質": r.material,
-                "製令編號": r.orderNo,
-                "品號": r.itemNo,
-                "數量": Number(r.qty),
-                "材料品號": r.matItemNo,
-                "材料用量": Number(Number(r.matUsage).toFixed(5)),
-                "備註1": r.note1,
-                "下腳料加工數量": Number(r.offcutQty),
-                "通知物管": r.notifyPm,
-                "業務幣別": r.currSales,
-                "即時匯率(業務)": r.rateSales,
-                "材料成本-業務": Number(Number(r.costSales).toFixed(5)),
-                "轉換台幣材料成本-業務": Number(Number(r.costTwdSales).toFixed(5)),
-                "業務節省金額-台幣": Number(Number(r.saveTwdSales).toFixed(2)),
-                "物管幣別": r.currPm,
-                "即時匯率(物管)": r.ratePm,
-                "材料成本-物管": Number(Number(r.costPm).toFixed(5)),
-                "轉換台幣材料成本-物管": Number(Number(r.costTwdPm).toFixed(5)),
-                "物管節省金額-台幣": Number(Number(r.saveTwdPm).toFixed(2)),
-                "備註2": r.note2
-            }));
-
-            const ws = XLSX.utils.json_to_sheet(exportData);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "石墨下腳料分析");
-            XLSX.writeFile(wb, `石墨下腳料分析表_${new Date().toISOString().split('T')[0]}.xlsx`);
-        };
-
-        window.importExcel = function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(evt) {
-                try {
-                    const data = new Uint8Array(evt.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const firstSheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[firstSheetName];
-                    const json = XLSX.utils.sheet_to_json(worksheet);
-
-                    const imported = json.map(r => ({
-                        date: r["日期"] || "",
-                        material: r["材質"] || MATERIALS[0],
-                        orderNo: r["製令編號"] || "",
-                        itemNo: r["品號"] || "",
-                        qty: parseFloat(r["數量"]) || 0,
-                        matItemNo: r["材料品號"] || "",
-                        matUsage: parseFloat(r["材料用量"]) || 0,
-                        note1: r["備註1"] || "",
-                        offcutQty: parseFloat(r["下腳料加工數量"]) || 0,
-                        notifyPm: r["通知物管"] === 'X' ? 'X' : 'O',
-                        currSales: r["業務幣別"] || "美金",
-                        costSales: parseFloat(r["材料成本-業務"]) || 0,
-                        currPm: r["物管幣別"] || "美金",
-                        costPm: parseFloat(r["材料成本-物管"]) || 0,
-                        note2: r["備註2"] || ""
-                    }));
-
-                    offcutData = imported;
-                    renderTable();
-                    saveToFirebase();
-                    showSysModal("成功", `成功匯入 ${imported.length} 筆下腳料資料！`);
-                } catch (err) {
-                    showSysModal("錯誤", "匯入失敗，請確認 Excel 格式正確！");
-                }
-            };
-            reader.readAsArrayBuffer(file);
-        };
-
-        // 6. Navigation Tab Switching & Chart Initialization
-        window.switchTab = function(tabId) {
-            activeTab = tabId;
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.className = "tab-btn px-4 py-2.5 text-xs font-semibold rounded-lg text-slate-600 hover:bg-slate-100 transition flex items-center gap-2 whitespace-nowrap";
-            });
-
-            document.getElementById(tabId).classList.remove('hidden');
-            const activeBtn = document.getElementById(`btn-${tabId}`);
-            activeBtn.className = "tab-btn px-4 py-2.5 text-xs font-semibold rounded-lg text-blue-600 bg-blue-50 border border-blue-200 transition flex items-center gap-2 whitespace-nowrap";
-
-            const filterBar = document.getElementById('chartFilterBar');
-            if (tabId === 'tab1') {
-                filterBar.classList.add('hidden');
-            } else {
-                filterBar.classList.remove('hidden');
-                updateActiveChart();
-            }
-        };
-
-        // Filter Data Helper
-        function getFilteredData() {
-            const mat = document.getElementById('filterMaterial').value;
-            const mon = document.getElementById('filterMonth').value;
-
-            return offcutData.filter(item => {
-                const matchMat = (mat === 'ALL' || item.material === mat);
-                const itemMon = item.date ? item.date.split('-')[1] : '';
-                const matchMon = (mon === 'ALL' || itemMon === mon);
-                return matchMat && matchMon;
-            });
+    function initTabTitles() {
+      for (let i = 1; i <= 5; i++) {
+        const savedTitle = localStorage.getItem(`graphite_tab_title_${i}`);
+        if (savedTitle) {
+          document.getElementById(`tab-title-${i}`).innerText = savedTitle;
         }
+      }
+    }
 
-        // Render Active Chart Logic
-        window.updateActiveChart = function() {
-            const data = getFilteredData();
+    // populate 圖表篩選選項
+    function populateFilterDropdowns() {
+      const m1 = document.getElementById("chart1MaterialFilter");
+      const m2 = document.getElementById("chart2MaterialFilter");
+      const m4 = document.getElementById("chart4MaterialFilter");
 
-            if (activeTab === 'tab2') renderChart1(data);
-            if (activeTab === 'tab3') renderChart2(data);
-            if (activeTab === 'tab4') renderChart3(data);
-            if (activeTab === 'tab5') renderChart4(data);
-        };
+      const opts = `<option value="ALL">全部材質</option>` + MATERIALS.map(m => `<option value="${m}">${m}</option>`).join('');
+      if (m1) m1.innerHTML = opts;
+      if (m2) m2.innerHTML = opts;
+      if (m4) m4.innerHTML = opts;
+    }
 
-        // Chart 1: 年度不同材質節省金額比較
-        function renderChart1(data) {
-            const ctx = document.getElementById('chart1').getContext('2d');
-            if (chartInstances.chart1) chartInstances.chart1.destroy();
+    // ================= Chart.js 統計繪製 =================
+    function updateAllCharts() {
+      updateChart1();
+      updateChart2();
+      updateChart3();
+      updateChart4();
+    }
 
-            const matMap = {};
-            data.forEach(r => {
-                if (!matMap[r.material]) matMap[r.material] = { sales: 0, pm: 0 };
-                matMap[r.material].sales += r.saveTwdSales || 0;
-                matMap[r.material].pm += r.saveTwdPm || 0;
-            });
+    window.updateChart1 = function() {
+      const mat = document.getElementById("chart1MaterialFilter").value;
+      const month = document.getElementById("chart1MonthFilter").value;
 
-            const labels = Object.keys(matMap);
-            chartInstances.chart1 = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        { label: '業務節省金額 (NTD)', data: labels.map(l => matMap[l].sales), backgroundColor: '#2563EB' },
-                        { label: '物管節省金額 (NTD)', data: labels.map(l => matMap[l].pm), backgroundColor: '#10B981' }
-                    ]
-                },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
+      const filtered = localData.filter(d => {
+        const matchMat = (mat === "ALL" || d.material === mat);
+        const matchMonth = (month === "ALL" || (d.date && d.date.substring(4,6) === month));
+        return matchMat && matchMonth;
+      });
+
+      const years = [...new Set(filtered.map(d => d.date ? d.date.substring(0,4) : "未定"))].sort();
+      const salesByYear = {}, logByYear = {};
+
+      years.forEach(y => { salesByYear[y] = 0; logByYear[y] = 0; });
+      filtered.forEach(d => {
+        const y = d.date ? d.date.substring(0,4) : "未定";
+        const q = parseFloat(d.qty || 0);
+        salesByYear[y] += (parseFloat(d.costSales || 0) * parseFloat(d.exRateSales || 1)) * q;
+        logByYear[y] += (parseFloat(d.costLogistics || 0) * parseFloat(d.exRateLogistics || 1)) * q;
+      });
+
+      const ctx = document.getElementById('chart1Canvas').getContext('2d');
+      if (chart1Instance) chart1Instance.destroy();
+      chart1Instance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: years,
+          datasets: [
+            { label: '業務節省金額 (台幣)', data: years.map(y => salesByYear[y]), backgroundColor: '#D97706' },
+            { label: '物管節省金額 (台幣)', data: years.map(y => logByYear[y]), backgroundColor: '#2563EB' }
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    };
+
+    window.updateChart2 = function() {
+      const mat = document.getElementById("chart2MaterialFilter").value;
+      const filtered = localData.filter(d => (mat === "ALL" || d.material === mat));
+
+      const months = ["01","02","03","04","05","06","07","08","09","10","11","12"];
+      const salesByM = {}, logByM = {};
+      months.forEach(m => { salesByM[m] = 0; logByM[m] = 0; });
+
+      filtered.forEach(d => {
+        if (d.date && d.date.length >= 6) {
+          const m = d.date.substring(4,6);
+          const q = parseFloat(d.qty || 0);
+          if (salesByM[m] !== undefined) {
+            salesByM[m] += (parseFloat(d.costSales || 0) * parseFloat(d.exRateSales || 1)) * q;
+            logByM[m] += (parseFloat(d.costLogistics || 0) * parseFloat(d.exRateLogistics || 1)) * q;
+          }
         }
+      });
 
-        // Chart 2: 逐月不同材質節省金額趨勢
-        function renderChart2(data) {
-            const ctx = document.getElementById('chart2').getContext('2d');
-            if (chartInstances.chart2) chartInstances.chart2.destroy();
+      const ctx = document.getElementById('chart2Canvas').getContext('2d');
+      if (chart2Instance) chart2Instance.destroy();
+      chart2Instance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: months.map(m => `${parseInt(m)}月`),
+          datasets: [
+            { label: '業務節省金額', data: months.map(m => salesByM[m]), borderColor: '#D97706', tension: 0.2, fill: false },
+            { label: '物管節省金額', data: months.map(m => logByM[m]), borderColor: '#2563EB', tension: 0.2, fill: false }
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    };
 
-            const months = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"];
-            const salesMonthly = Array(12).fill(0);
-            const pmMonthly = Array(12).fill(0);
+    window.updateChart3 = function() {
+      const month = document.getElementById("chart3MonthFilter").value;
+      const filtered = localData.filter(d => (month === "ALL" || (d.date && d.date.substring(4,6) === month)));
 
-            data.forEach(r => {
-                if (r.date) {
-                    const mIdx = parseInt(r.date.split('-')[1], 10) - 1;
-                    if (mIdx >= 0 && mIdx < 12) {
-                        salesMonthly[mIdx] += r.saveTwdSales || 0;
-                        pmMonthly[mIdx] += r.saveTwdPm || 0;
-                    }
-                }
-            });
+      const avgSales = {}, avgLog = {}, count = {};
+      MATERIALS.forEach(m => { avgSales[m] = 0; avgLog[m] = 0; count[m] = 0; });
 
-            chartInstances.chart2 = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: months.map(m => `${parseInt(m)}月`),
-                    datasets: [
-                        { label: '業務節省趨勢 (NTD)', data: salesMonthly, borderColor: '#2563EB', backgroundColor: 'rgba(37, 99, 235, 0.1)', fill: true, tension: 0.3 },
-                        { label: '物管節省趨勢 (NTD)', data: pmMonthly, borderColor: '#10B981', backgroundColor: 'rgba(16, 185, 129, 0.1)', fill: true, tension: 0.3 }
-                    ]
-                },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
+      filtered.forEach(d => {
+        const m = d.material;
+        if (avgSales[m] !== undefined) {
+          const q = parseFloat(d.qty || 0);
+          avgSales[m] += (parseFloat(d.costSales || 0) * parseFloat(d.exRateSales || 1)) * q;
+          avgLog[m] += (parseFloat(d.costLogistics || 0) * parseFloat(d.exRateLogistics || 1)) * q;
+          count[m] += 1;
         }
+      });
 
-        // Chart 3: 依材質平均節省成本比較
-        function renderChart3(data) {
-            const ctx = document.getElementById('chart3').getContext('2d');
-            if (chartInstances.chart3) chartInstances.chart3.destroy();
+      const finalSales = MATERIALS.map(m => count[m] ? avgSales[m] / count[m] : 0);
+      const finalLog = MATERIALS.map(m => count[m] ? avgLog[m] / count[m] : 0);
 
-            const matMap = {};
-            data.forEach(r => {
-                if (!matMap[r.material]) matMap[r.material] = { salesTotal: 0, pmTotal: 0, count: 0 };
-                matMap[r.material].salesTotal += r.saveTwdSales || 0;
-                matMap[r.material].pmTotal += r.saveTwdPm || 0;
-                matMap[r.material].count += 1;
-            });
+      const ctx = document.getElementById('chart3Canvas').getContext('2d');
+      if (chart3Instance) chart3Instance.destroy();
+      chart3Instance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: MATERIALS,
+          datasets: [
+            { label: '業務平均節省金額', data: finalSales, backgroundColor: '#F59E0B' },
+            { label: '物管平均節省金額', data: finalLog, backgroundColor: '#3B82F6' }
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    };
 
-            const labels = Object.keys(matMap);
-            chartInstances.chart3 = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        { label: '平均業務節省金額 (NTD)', data: labels.map(l => matMap[l].salesTotal / matMap[l].count), backgroundColor: '#8B5CF6' },
-                        { label: '平均物管節省金額 (NTD)', data: labels.map(l => matMap[l].pmTotal / matMap[l].count), backgroundColor: '#F59E0B' }
-                    ]
-                },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
+    window.updateChart4 = function() {
+      const mat = document.getElementById("chart4MaterialFilter").value;
+      const filtered = localData.filter(d => (mat === "ALL" || d.material === mat));
+
+      const months = ["01","02","03","04","05","06","07","08","09","10","11","12"];
+      const qtyByM = {}, offcutByM = {};
+      months.forEach(m => { qtyByM[m] = 0; offcutByM[m] = 0; });
+
+      filtered.forEach(d => {
+        if (d.date && d.date.length >= 6) {
+          const m = d.date.substring(4,6);
+          if (qtyByM[m] !== undefined) {
+            qtyByM[m] += parseFloat(d.qty || 0);
+            offcutByM[m] += parseFloat(d.offcutQty || 0);
+          }
         }
+      });
 
-        // Chart 4: 數量與下腳料加工數量統計
-        function renderChart4(data) {
-            const ctxA = document.getElementById('chart4A').getContext('2d');
-            const ctxB = document.getElementById('chart4B').getContext('2d');
-            if (chartInstances.chart4A) chartInstances.chart4A.destroy();
-            if (chartInstances.chart4B) chartInstances.chart4B.destroy();
+      const ctx = document.getElementById('chart4Canvas').getContext('2d');
+      if (chart4Instance) chart4Instance.destroy();
+      chart4Instance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: months.map(m => `${parseInt(m)}月`),
+          datasets: [
+            { label: '數量統計', data: months.map(m => qtyByM[m]), backgroundColor: '#10B981' },
+            { label: '下腳料加工數量統計', data: months.map(m => offcutByM[m]), backgroundColor: '#6366F1' }
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    };
 
-            const months = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"];
-            const qtyMonthly = Array(12).fill(0);
-            const offcutQtyMonthly = Array(12).fill(0);
-
-            data.forEach(r => {
-                if (r.date) {
-                    const mIdx = parseInt(r.date.split('-')[1], 10) - 1;
-                    if (mIdx >= 0 && mIdx < 12) {
-                        qtyMonthly[mIdx] += parseFloat(r.qty) || 0;
-                        offcutQtyMonthly[mIdx] += parseFloat(r.offcutQty) || 0;
-                    }
-                }
-            });
-
-            chartInstances.chart4A = new Chart(ctxA, {
-                type: 'bar',
-                data: {
-                    labels: months.map(m => `${parseInt(m)}月`),
-                    datasets: [{ label: '材質數量統計', data: qtyMonthly, backgroundColor: '#6366F1' }]
-                },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
-
-            chartInstances.chart4B = new Chart(ctxB, {
-                type: 'bar',
-                data: {
-                    labels: months.map(m => `${parseInt(m)}月`),
-                    datasets: [{ label: '下腳料加工數量統計', data: offcutQtyMonthly, backgroundColor: '#14B8A6' }]
-                },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
+    // ================= PNG / PDF 高畫質匯出 =================
+    window.exportPageExport = function(elementId, type) {
+      const el = document.getElementById(`export-area-${elementId}`);
+      html2canvas(el, { scale: 2 }).then(canvas => {
+        if (type === 'png') {
+          const link = document.createElement('a');
+          link.download = `石墨下腳料分析表格_${new Date().toISOString().slice(0,10)}.png`;
+          link.href = canvas.toDataURL('image/png');
+          link.click();
+        } else {
+          const imgData = canvas.toDataURL('image/png');
+          const { jsPDF } = window.jspdf;
+          const pdf = new jsPDF('l', 'mm', 'a4');
+          const imgProps = pdf.getImageProperties(imgData);
+          const pdfWidth = pdf.internal.pageSize.getWidth();
+          const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+          pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+          pdf.save(`石墨下腳料分析表格_${new Date().toISOString().slice(0,10)}.pdf`);
         }
+      });
+    };
 
-        // 7. PNG and PDF High-Resolution Export Handling
-        window.exportPNG = function(elementId, fileName) {
-            const target = document.getElementById(elementId);
-            html2canvas(target, { scale: 2, backgroundColor: "#FDFBF7" }).then(canvas => {
-                const link = document.createElement('a');
-                link.download = `${fileName}_${new Date().toISOString().split('T')[0]}.png`;
-                link.href = canvas.toDataURL('image/png');
-                link.click();
-            });
-        };
-
-        window.exportPDF = function(elementId, fileName) {
-            const target = document.getElementById(elementId);
-            html2canvas(target, { scale: 2, backgroundColor: "#FDFBF7" }).then(canvas => {
-                const imgData = canvas.toDataURL('image/png');
-                const { jsPDF } = window.jspdf;
-                const pdf = new jsPDF('p', 'mm', 'a4');
-                const imgProps = pdf.getImageProperties(imgData);
-                const pdfWidth = pdf.internal.pageSize.getWidth();
-                const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-
-                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-                pdf.save(`${fileName}_${new Date().toISOString().split('T')[0]}.pdf`);
-            });
-        };
-
-        // Export Controls Event Binding for Chart Sections
-        document.getElementById('btnChartPNG').addEventListener('click', () => {
-            const targetId = activeTab === 'tab5' ? 'chartCard5' : `chartCard${activeTab.replace('tab', '')}`;
-            exportPNG(targetId, `圖表分析_${activeTab}`);
-        });
-
-        document.getElementById('btnChartPDF').addEventListener('click', () => {
-            const targetId = activeTab === 'tab5' ? 'chartCard5' : `chartCard${activeTab.replace('tab', '')}`;
-            exportPDF(targetId, `圖表分析_${activeTab}`);
-        });
-
-        // 8. Custom Modal Alert Helper
-        window.showSysModal = function(title, msg) {
-            document.getElementById('sysModalTitle').textContent = title;
-            document.getElementById('sysModalMsg').textContent = msg;
-            document.getElementById('sysModal').classList.remove('hidden');
-        };
-
-        window.closeSysModal = function() {
-            document.getElementById('sysModal').classList.add('hidden');
-        };
-    </script>
+    window.exportChartExport = function(containerId, type) {
+      const el = document.getElementById(containerId);
+      html2canvas(el, { scale: 2 }).then(canvas => {
+        if (type === 'png') {
+          const link = document.createElement('a');
+          link.download = `統計圖表分析_${new Date().toISOString().slice(0,10)}.png`;
+          link.href = canvas.toDataURL('image/png');
+          link.click();
+        } else {
+          const imgData = canvas.toDataURL('image/png');
+          const { jsPDF } = window.jspdf;
+          const pdf = new jsPDF('l', 'mm', 'a4');
+          const imgProps = pdf.getImageProperties(imgData);
+          const pdfWidth = pdf.internal.pageSize.getWidth();
+          const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+          pdf.addImage(imgData, 'PNG', 10, 10, pdfWidth - 20, pdfHeight);
+          pdf.save(`統計圖表分析_${new Date().toISOString().slice(0,10)}.pdf`);
+        }
+      });
+    };
+  </script>
 </body>
 </html>
