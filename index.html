@@ -186,7 +186,7 @@
                   <th class="p-2 border border-slate-300 min-w-[90px]">數量</th>
                   <th class="p-2 border border-slate-300 min-w-[100px]">材料品號</th>
                   <th class="p-2 border border-slate-300 min-w-[110px]">材料用量</th>
-                  <th class="p-2 border border-slate-300 min-w-[120px]">備註</th>
+                  <th class="p-2 border border-slate-300 min-w-[120px]">下腳料來源</th>
                   <th class="p-2 border border-slate-300 min-w-[110px]">下腳料加工數量</th>
                   <th class="p-2 border border-slate-300 min-w-[90px]">通知物管</th>
                   <th class="p-2 border border-slate-300 min-w-[90px]">幣別(業務)</th>
@@ -584,7 +584,7 @@
           qty: parseFloat(r["數量"]) || 0,
           matItemNo: String(r["材料品號"] || ""),
           matUsage: parseFloat(r["材料用量"]) || 0,
-          note1: String(r["備註1"] || r["備註"] || ""),
+          note1: String(r["備註1"] || r["下腳料來源"] || ""),
           offcutQty: parseFloat(r["下腳料加工數量"]) || 0,
           notifyLogistics: r["通知物管"] || "O",
           currencySales: r["幣別(業務)"] || "美金",
